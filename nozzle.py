@@ -565,77 +565,63 @@ def pressuresout(nodes, p_opt):
 
 node_quantity = 7
 mach_exit = 2.4
-the = []
-tam = []
-area = []
-def goal():
-    theta_max, nodes, thetas = populate(node_quantity, mach_exit, 0.1)
-    the.append(np.rad2deg(theta_max))
-    for node in nodes:
-        point = node['Point']
-        Kminus = node['Kminus']
-        Kplus = node['Kplus']
-        theta = node['theta']
-        v = node["nu"]
-        M = node["mach"]
-        mu = node["mu"]
-        print(f"{point:7.3f} - {Kminus:7.3f} - {Kplus:7.3f} - {theta:7.3f} - {v:7.3f} - {M:7.3f} - {mu:7.3f}")
 
-    nodes = positions(node_quantity, theta_max, thetas, nodes, 0.1)
-    nodes = pressures(nodes, mach_exit, 101300)
-    xs = [0]
-    ys = [0.1]
-    ts = [0]
-    Ms = [1]
-    ps = [0]
+theta_max, nodes, thetas = populate(node_quantity, 2.4, 1)
+print(theta_max)
+for node in nodes:
+    point = node['Point']
+    Kminus = node['Kminus']
+    Kplus = node['Kplus']
+    theta = node['theta']
+    v = node["nu"]
+    M = node["mach"]
+    mu = node["mu"]
+    print(f"{point:7.3f} - {Kminus:7.3f} - {Kplus:7.3f} - {theta:7.3f} - {v:7.3f} - {M:7.3f} - {mu:7.3f}")
+
+nodes = positions(node_quantity, theta_max, thetas, nodes, 1)
+nodes = pressures(nodes, 2.4, 101300)
+xs = [0]
+ys = [1]
+ts = [0]
+Ms = [1]
+ps = [0]
 
 
-    xs_wall = [0]
-    ys_wall = [0.1]
-    ts_wall = [0]
+xs_wall = [0]
+ys_wall = [1]
+ts_wall = [0]
 
-    xs_node = []
-    ys_node = []
-    ts_node = []
+xs_node = []
+ys_node = []
+ts_node = []
 
-    xs_center = []
-    ys_center = []
-    ts_center = []
-    contador = 0
-    for i in range(node_quantity+1, 1, -1):
-        for j in range(0, i, 1):
-            node = nodes[contador]
-            if j == i-1:
-                #wall
-                xs_wall.append(node["coordenadas"]["x"])
-                ys_wall.append(node["coordenadas"]["y"])
-                ts_wall.append(node["Point"])
-            elif j == 0:
-                xs_center.append(node["coordenadas"]["x"])
-                ys_center.append(node["coordenadas"]["y"])
-                ts_center.append(node["Point"])
-            else:
-                xs_node.append(node["coordenadas"]["x"])
-                ys_node.append(node["coordenadas"]["y"])
-                ts_node.append(node["Point"])
-            xs.append(node["coordenadas"]["x"])
-            ys.append(node["coordenadas"]["y"])
-            ts.append(node["Point"])
-            Ms.append(node["mach"])
-            ps.append(node['P'])
-            contador +=1
+xs_center = []
+ys_center = []
+ts_center = []
+contador = 0
+for i in range(node_quantity+1, 1, -1):
+    for j in range(0, i, 1):
+        node = nodes[contador]
+        if j == i-1:
+            #wall
+            xs_wall.append(node["coordenadas"]["x"])
+            ys_wall.append(node["coordenadas"]["y"])
+            ts_wall.append(node["Point"])
+        elif j == 0:
+            xs_center.append(node["coordenadas"]["x"])
+            ys_center.append(node["coordenadas"]["y"])
+            ts_center.append(node["Point"])
+        else:
+            xs_node.append(node["coordenadas"]["x"])
+            ys_node.append(node["coordenadas"]["y"])
+            ts_node.append(node["Point"])
+        xs.append(node["coordenadas"]["x"])
+        ys.append(node["coordenadas"]["y"])
+        ts.append(node["Point"])
+        Ms.append(node["mach"])
+        ps.append(node['P'])
+        contador +=1
 
-
-
-plt.plot(machs, the)
-plt.title("Theta_max em função do mach de saída")
-plt.xlabel("Mach de saída")
-plt.ylabel("Theta_max = v(M_e)/2")
-plt.grid()
-plt.show()
-
-
-'''
 
 for i in range(len(xs)):
     if ys[i] != None:
@@ -645,10 +631,12 @@ plt.scatter(xs_center, ys_center, color='g')
 plt.scatter(xs_node, ys_node, color='b')
 
 plt.plot(xs_wall, ys_wall, 'k', label="Wall")
+plt.title("Nós de avaliação e parede da tubeira")
 plt.legend()
+plt.show()
 #plt.plot([0, 0.0007], [0.1, -152.786*0.0007+0.1])
 
-
+'''
 a, b, x0 = find_zero1((0, 0.1), -90+0.375, 0)
 plt.plot([0, x0], [0.1, a*x0+b])
 a1, b1, x1 = find_zero1((x0, a*x0+b), 74.1+0.375, 0.1)
@@ -657,7 +645,7 @@ plt.plot([x0, x1], [a*x0+b, a1*x1+b1])
 a, b, x0 = find_zero1((0, 0.1), -90+3.375, 0)
 plt.plot([0, x0], [0.1, a*x0+b])
 plt.show()
-
+'''
 
 triang = tri.Triangulation(xs, ys)
 
@@ -673,10 +661,15 @@ plt.show()
 
 
 
+d = 0
+for i in range(len(xs_wall)-1):
+    dx = xs_wall[i+1] - xs_wall[i]
+    dy = ys_wall[i+1] - ys_wall[i]
+    d += np.sqrt(dx**2 + dy**2)
 
-
-
-
+print(f"tamanho d {d}")
+print(f"tamanho r {ys_wall[-1]}")
+print(f"theta {np.rad2deg(theta_max)}")
 
 
 
@@ -698,7 +691,6 @@ plt.ylabel('Y')
 plt.title('Mach ao longo da tubeira')
 plt.show()
 
-'''
 
 triang = tri.Triangulation(xs, np.array(ys))
 # Criando o gráfico de contornos preenchidos
@@ -708,5 +700,5 @@ plt.tricontourf(triang, ps, cmap='viridis')
 plt.colorbar(label='Pressure')
 plt.xlabel('X')
 plt.ylabel('Y')
-plt.title('Mach ao longo da tubeira')
+plt.title('Pressão ao longo da tubeira')
 plt.show()
