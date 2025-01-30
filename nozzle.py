@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.tri as tri
 
 # Constantes
 gamma = 1.4  # Razão de capacidades caloríficas (ar ideal)
-M_exit = 3
+M_exit = 5
 
 # Funções auxiliares
 def prandtl_meyer(M):
@@ -12,6 +13,37 @@ def prandtl_meyer(M):
     term2 = np.arctan(np.sqrt((gamma - 1) / (gamma + 1) * (M**2 - 1)))
     term3 = np.arctan(np.sqrt(M**2 - 1))
     return term1 * term2 - term3
+
+
+def find_zero(ponto, angulo, y_raiz):
+    # Ponto por onde a reta passa
+    x0, y0 = ponto
+    
+    # Converter o ângulo de graus para radianos
+    angulo_rad = np.deg2rad(angulo)
+    
+    # Calcular a inclinação m da reta
+    a = np.tan(angulo_rad)
+    b = y0 - a*x0
+
+    x_raiz = (y_raiz-b)/1#a
+    
+    return a, b, x_raiz
+
+def find_zero1(ponto, angulo, y_raiz):
+    # Ponto por onde a reta passa
+    x0, y0 = ponto
+    
+    # Converter o ângulo de graus para radianos
+    angulo_rad = np.deg2rad(angulo)
+    
+    # Calcular a inclinação m da reta
+    a = np.tan(angulo_rad)
+    b = y0 - a*x0
+
+    x_raiz = (y_raiz-b)/a
+    
+    return a, b, x_raiz
 
 def mach_angle(M):
     """Calcula o ângulo de Mach em radianos. Mi"""
@@ -24,6 +56,41 @@ def prandtl_meyer_optimize(M, v_real):
     term3 = np.arctan(np.sqrt(M**2 - 1))
     v_new = term1 * term2 - term3
     return v_new - v_real
+
+
+def find_intersection2(x1, y1, v1, theta1, x2, y2, v2, theta2):
+    """
+    Calcula as coordenadas (x, y) do nó no método das características.
+
+    Parâmetros:
+    - x1, y1: coordenadas do nó na linha C+
+    - v1: ângulo de Prandtl-Meyer no nó na linha C+
+    - theta1: ângulo do fluxo no nó na linha C+
+    - x2, y2: coordenadas do nó na linha C-
+    - v2: ângulo de Prandtl-Meyer no nó na linha C-
+    - theta2: ângulo do fluxo no nó na linha C-
+
+    Retorna:
+    - x, y: coordenadas do nó calculadas
+    """
+    # Inclinações das linhas características
+    m1 = np.tan(np.deg2rad(theta1 + v1))  # Inclinação da linha C+
+    m2 = np.tan(np.deg2rad(theta2 - v2))  # Inclinação da linha C-
+
+    # Sistema de equações:
+    # y - y1 = m1 * (x - x1)  -->  y = m1 * (x - x1) + y1
+    # y - y2 = m2 * (x - x2)  -->  y = m2 * (x - x2) + y2
+
+    # Igualando as duas expressões para y:
+    # m1 * (x - x1) + y1 = m2 * (x - x2) + y2
+
+    # Resolvendo para x:
+    x = ((m1 * x1 - m2 * x2) + (y2 - y1)) / (m1 - m2)
+
+    # Substituindo x em uma das equações para encontrar y:
+    y = m1 * (x - x1) + y1
+
+    return x, y
 
 def calcular_intersecao(x1, y1, a1, x2, y2, a2):
     """
@@ -136,29 +203,8 @@ def node3_calculator(node1, node2):
 
 
 def calcular_xb(xa, ya, thetaA, yb):
-    """
-    Calcula a coordenada xB do ponto B que passa por uma reta com inclinação thetaA
-    e que também passa pelo ponto A (xa, ya).
+    return xa + (yb - ya)/np.tan(thetaA)
     
-    Args:
-        xa (float): Coordenada x do ponto A.
-        ya (float): Coordenada y do ponto A.
-        thetaA (float): Inclinação da reta em graus.
-        yb (float): Coordenada y do ponto B.
-    
-    Returns:
-        float: Coordenada x do ponto B (xB).
-    """
-    # Converte thetaA para radianos
-    thetaA_rad = np.rad2deg(thetaA)
-    
-    # Verifica se a reta é vertical
-    #if np.isclose(np.cos(thetaA_rad), 0, abs_tol=1e-9):
-    #    raise ValueError("A reta é vertical, xB será igual a xA.")
-    
-    # Calcula xB usando a fórmula
-    xb = xa + (yb - ya) / np.tan(thetaA_rad)
-    return xb
 
 def wall_point(node1, wallPrev):
     theta1 = node1["theta"]
@@ -252,16 +298,64 @@ def node_center(node1):
     }
     return node
 
+
+def xyFind(xa, ya, alpha, xb, yb, beta):
+    a1, b1, x1 = find_zero((xa, ya), alpha, 0)
+    a2, b2, x2 = find_zero((xb, yb), beta, 0)
+
+    #y = ax + b iguais
+    x  = (b2 - b1)/(a1-a2)
+    y = a1*x + b1
+
+    return x, y
+
+
+    '''# Converter os ângulos de graus para radianos
+    alpha_rad = np.deg2rad(alpha)
+    beta_rad = np.deg2rad(beta)
+    
+    # Calcular as tangentes dos ângulos
+    tan_alpha = np.tan(alpha_rad)
+    tan_beta = np.tan(beta_rad)
+    
+    # Verificar se as retas são paralelas
+    if np.isclose(tan_alpha, tan_beta, rtol=1e-9):
+        return None  # Retorna None se as retas forem paralelas (sem interseção ou infinitas interseções)
+    
+    # Calcular X
+    X = ((yb - ya) + xb * tan_beta - xa * tan_alpha) / (tan_alpha - tan_beta)
+    
+    # Calcular Y usando a equação da reta que passa por A
+    Y = ya + tan_alpha * (X - xa)
+    
+    return X, Y'''
+
+
+
+
+
 def printar(node, point):
+    point = node['Point']
     Kminus = np.rad2deg(node['theta'] + node["nu"])
     Kplus = np.rad2deg(node['theta'] - node["nu"])
     theta = np.rad2deg(node['theta'])
     v = np.rad2deg(node["nu"])
     M = node["mach"]
     mu = np.rad2deg(node["mu"])
-    print(f"{point:3.0f} - {Kminus:.2f} - {Kplus:.2f} - {theta:.2f} - {v:.2f} - {M:.2f} - {mu:.2f}")
 
-def main(n, M_exit, nozzle_radius):
+    node = {
+    "Point": point,
+    "coordenadas": {"x": None, "y": None},       # Coordenadas do nó
+    "theta": theta,                         # Ângulo de inclinação (graus)
+    "mu": mu,                               # Ângulo de Mach (graus)
+    "nu": v,                                # Função de Prandtl-Meyer (graus)
+    "mach": M,                              # Número de Mach
+    "Kminus": Kminus,
+    "Kplus": Kplus
+    }
+    return node
+
+def populate(n, M_exit, nozzle_radius):
     alpha = 1
     nodes_count = 0
     contador = 1
@@ -272,14 +366,15 @@ def main(n, M_exit, nozzle_radius):
     nodes = []
 
     theta_max = prandtl_meyer(M_exit)
-    thetas = np.linspace(0, theta_max/2, n)
+    thetas = np.linspace(np.deg2rad(0.00375), theta_max/2, n)
     
     
     #Primeira linha
     for i in range(n):
         theta = thetas[i]
         if i == 0:
-            node = montar_node(np.sin(theta)*nozzle_radius, 0, theta, mach_angle(1), theta, 1)
+            diegoMach, diegoSteps = bissecao(prandtl_meyer_optimize, 1, M_exit, theta)
+            node = montar_node(np.sin(theta)*nozzle_radius, 0, theta, np.deg2rad(mach_angle(diegoMach)), theta, diegoMach)
         else:
             node = node2_calculator(nodes[0], theta, nozzle_radius)
         node['Point'] = contador
@@ -321,15 +416,297 @@ def main(n, M_exit, nozzle_radius):
 
     a = 1
     for node in nodes:
-        printar(node, a)
+        node = printar(node, a)
+        nodes[a-1] = node
         a+=1
 
-    xs = []
-    ys = []
-    for node in nodes:
-        xs.append(node["coordenadas"]["x"])
-        ys.append(node["coordenadas"]["y"])
+    return theta_max/2, nodes, thetas
 
-    plt.scatter(xs, ys)
-    plt.show()
-main(7, 2.4, 0.1)
+
+def positions(n, theta_max, thetas, nodes, nozzle_raidus):
+    contador = 0
+    for i in range(n+1, 1, -1):
+        for j in range(0, i, 1):
+            node = nodes[contador]
+            if j == 0:
+                #Centro
+                if i == n+1:
+                    xa = 0
+                    ya = nozzle_raidus
+                    alpha = -90 + np.rad2deg(thetas[j])
+
+                    xb = 0
+                    yb = 0
+                    beta = 0
+
+                    x, y = xyFind(xa, ya, alpha, xb, yb, beta)
+
+                    node["coordenadas"]["x"] = x
+                    node["coordenadas"]["y"] = y
+
+                else:
+                    node_p = nodes[contador-i]
+
+                    xa = 0
+                    ya = 0
+                    alpha = 0
+
+                    xb = node_p["coordenadas"]["x"]
+                    yb = node_p["coordenadas"]["y"]
+                    beta = node_p["theta"] - node_p["mu"]
+
+                    x, y = xyFind(xa, ya, alpha, xb, yb, beta)
+                    print(y)
+                    node["coordenadas"]["x"] = x
+                    node["coordenadas"]["y"] = y
+        
+            elif j == i-1:
+                #Diego Certo
+                #Wall
+                if i == n+1:
+                    xa = 0
+                    ya = nozzle_raidus
+                    alpha = (theta_max + node["theta"])/2
+
+                    xb = nodes[contador-1]["coordenadas"]["x"]
+                    yb = nodes[contador-1]["coordenadas"]["y"]
+                    beta = (nodes[contador-1]["theta"] + nodes[contador-1]["mu"])
+
+                    x, y = xyFind(xa, ya, alpha, xb, yb, beta)
+                    node["coordenadas"]["x"] = x
+                    node["coordenadas"]["y"] = y
+                    
+                else:
+                    node_p = nodes[contador-i]
+                    xa = node_p["coordenadas"]["x"] 
+                    ya = node_p["coordenadas"]["y"]
+                    alpha = (node_p["theta"] + node["theta"])/2
+               
+                    xb = nodes[contador-1]["coordenadas"]["x"]
+                    yb = nodes[contador-1]["coordenadas"]["y"]
+                    beta = (nodes[contador-1]["theta"] + nodes[contador-1]["mu"])
+
+                    x, y = xyFind(xa, ya, alpha, xb, yb, beta)
+                    node["coordenadas"]["x"] = x
+                    node["coordenadas"]["y"] = y
+
+            else:
+                #nodes
+                if i == n+1:
+                    #Diego CErto
+                    node_p = nodes[contador-1]
+
+                    xa = 0
+                    ya = nozzle_raidus
+                    alpha = - (90-np.rad2deg(thetas[j]))
+
+                    xb = node_p["coordenadas"]["x"]
+                    yb = node_p["coordenadas"]["y"]
+                    beta = (node_p["theta"] + node_p["mu"])
+
+                    x, y = xyFind(xa, ya, alpha, xb, yb, beta)
+                    node["coordenadas"]["x"] = x
+                    node["coordenadas"]["y"] = y
+
+                else:
+                    #Diego Certo
+                    node_c = nodes[contador-i]
+                    node_p = nodes[contador-1]
+
+                    xa = node_c["coordenadas"]["x"]
+                    ya = node_c["coordenadas"]["y"]
+                    alpha = node_p["theta"] - node_p["mu"]
+
+                    xb = node_p["coordenadas"]["x"]
+                    yb = node_p["coordenadas"]["y"]
+                    beta = (node_p["theta"] + node_p["mu"])
+
+                    x, y = xyFind(xa, ya, alpha, xb, yb, beta)
+                    node["coordenadas"]["x"] = x
+                    node["coordenadas"]["y"] = y
+            
+            contador += 1
+    
+    return nodes
+
+
+def pressures(nodes, m_exit, p_opt):
+    P0 = p_opt * (1 + (gamma - 1) / 2 * m_exit**2) ** (gamma / (gamma - 1))
+    contador = len(nodes)
+    for i in range(contador):
+        node = nodes[i]
+        node['P'] = P0 * (1 + (gamma - 1) / 2 * node['mach']**2) ** (-gamma / (gamma - 1))
+
+    return nodes
+
+
+'''
+def pressuresout(nodes, p_opt):
+    contador = len(nodes)
+    for i in range(n+1, 1, -1):
+        for j in range(0, i, 1):
+            node = nodes[contador]
+            if j == 0:
+                #Centro
+                if i == n+1:
+                else:
+            elif j == i-1:
+                #Wall
+                if i == n+1:
+                else:
+            else:
+                #nodes
+                if i == n+1:
+                else:
+            contador -= 1
+    return nodes
+'''
+
+
+node_quantity = 7
+mach_exit = 2.4
+the = []
+tam = []
+area = []
+def goal():
+    theta_max, nodes, thetas = populate(node_quantity, mach_exit, 0.1)
+    the.append(np.rad2deg(theta_max))
+    for node in nodes:
+        point = node['Point']
+        Kminus = node['Kminus']
+        Kplus = node['Kplus']
+        theta = node['theta']
+        v = node["nu"]
+        M = node["mach"]
+        mu = node["mu"]
+        print(f"{point:7.3f} - {Kminus:7.3f} - {Kplus:7.3f} - {theta:7.3f} - {v:7.3f} - {M:7.3f} - {mu:7.3f}")
+
+    nodes = positions(node_quantity, theta_max, thetas, nodes, 0.1)
+    nodes = pressures(nodes, mach_exit, 101300)
+    xs = [0]
+    ys = [0.1]
+    ts = [0]
+    Ms = [1]
+    ps = [0]
+
+
+    xs_wall = [0]
+    ys_wall = [0.1]
+    ts_wall = [0]
+
+    xs_node = []
+    ys_node = []
+    ts_node = []
+
+    xs_center = []
+    ys_center = []
+    ts_center = []
+    contador = 0
+    for i in range(node_quantity+1, 1, -1):
+        for j in range(0, i, 1):
+            node = nodes[contador]
+            if j == i-1:
+                #wall
+                xs_wall.append(node["coordenadas"]["x"])
+                ys_wall.append(node["coordenadas"]["y"])
+                ts_wall.append(node["Point"])
+            elif j == 0:
+                xs_center.append(node["coordenadas"]["x"])
+                ys_center.append(node["coordenadas"]["y"])
+                ts_center.append(node["Point"])
+            else:
+                xs_node.append(node["coordenadas"]["x"])
+                ys_node.append(node["coordenadas"]["y"])
+                ts_node.append(node["Point"])
+            xs.append(node["coordenadas"]["x"])
+            ys.append(node["coordenadas"]["y"])
+            ts.append(node["Point"])
+            Ms.append(node["mach"])
+            ps.append(node['P'])
+            contador +=1
+
+
+
+plt.plot(machs, the)
+plt.title("Theta_max em função do mach de saída")
+plt.xlabel("Mach de saída")
+plt.ylabel("Theta_max = v(M_e)/2")
+plt.grid()
+plt.show()
+
+
+'''
+
+for i in range(len(xs)):
+    if ys[i] != None:
+        plt.text(xs[i], ys[i]*1.03, str(ts[i]), color='black', fontsize=10, ha='center')
+plt.scatter(xs_wall, ys_wall, color='black')
+plt.scatter(xs_center, ys_center, color='g')
+plt.scatter(xs_node, ys_node, color='b')
+
+plt.plot(xs_wall, ys_wall, 'k', label="Wall")
+plt.legend()
+#plt.plot([0, 0.0007], [0.1, -152.786*0.0007+0.1])
+
+
+a, b, x0 = find_zero1((0, 0.1), -90+0.375, 0)
+plt.plot([0, x0], [0.1, a*x0+b])
+a1, b1, x1 = find_zero1((x0, a*x0+b), 74.1+0.375, 0.1)
+x1 = x1/5
+plt.plot([x0, x1], [a*x0+b, a1*x1+b1])
+a, b, x0 = find_zero1((0, 0.1), -90+3.375, 0)
+plt.plot([0, x0], [0.1, a*x0+b])
+plt.show()
+
+
+triang = tri.Triangulation(xs, ys)
+
+# Criando o gráfico de contornos preenchidos
+plt.figure(figsize=(6, 6))
+plt.plot(xs_wall, ys_wall, "k")
+plt.tricontourf(triang, Ms, cmap='viridis')
+plt.colorbar(label='Mach')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.title('Mach ao longo da tubeira')
+plt.show()
+
+
+
+
+
+
+
+
+
+
+plt.figure(figsize=(6, 6))
+
+for i in range(len(xs)):
+    if ys[i] != None:
+        plt.text(xs[i], ys[i]*1.03, str(ts[i]), color='black', fontsize=10, ha='center')
+plt.scatter(xs_wall, ys_wall, color='black')
+plt.scatter(xs_center, ys_center, color='g')
+plt.scatter(xs_node, ys_node, color='b')
+plt.plot(xs_wall, ys_wall, 'k', label="Wall")
+triang = tri.Triangulation(xs, -np.array(ys))
+plt.plot(xs_wall, -np.array(ys_wall), "k")
+plt.tricontourf(triang, Ms, cmap='viridis')
+plt.colorbar(label='Mach')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.title('Mach ao longo da tubeira')
+plt.show()
+
+'''
+
+triang = tri.Triangulation(xs, np.array(ys))
+# Criando o gráfico de contornos preenchidos
+plt.figure(figsize=(6, 6))
+plt.plot(xs_wall, ys_wall, "k")
+plt.tricontourf(triang, ps, cmap='viridis')
+plt.colorbar(label='Pressure')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.title('Mach ao longo da tubeira')
+plt.show()
