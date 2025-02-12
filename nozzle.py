@@ -562,7 +562,7 @@ def pressuresout(nodes, p_opt):
     return nodes
 '''
 
-
+############################################
 node_quantity = 7
 mach_exit = 2.4
 
@@ -580,6 +580,16 @@ for node in nodes:
 
 nodes = positions(node_quantity, theta_max, thetas, nodes, 1)
 nodes = pressures(nodes, 2.4, 101300)
+
+###################################
+
+
+
+
+
+
+
+
 xs = [0]
 ys = [1]
 ts = [0]
@@ -636,16 +646,7 @@ plt.legend()
 plt.show()
 #plt.plot([0, 0.0007], [0.1, -152.786*0.0007+0.1])
 
-'''
-a, b, x0 = find_zero1((0, 0.1), -90+0.375, 0)
-plt.plot([0, x0], [0.1, a*x0+b])
-a1, b1, x1 = find_zero1((x0, a*x0+b), 74.1+0.375, 0.1)
-x1 = x1/5
-plt.plot([x0, x1], [a*x0+b, a1*x1+b1])
-a, b, x0 = find_zero1((0, 0.1), -90+3.375, 0)
-plt.plot([0, x0], [0.1, a*x0+b])
-plt.show()
-'''
+
 
 triang = tri.Triangulation(xs, ys)
 
